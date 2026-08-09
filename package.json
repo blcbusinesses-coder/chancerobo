@@ -1,0 +1,33 @@
+{
+  "name": "chance-ecosystem",
+  "version": "0.1.0",
+  "description": "The C.H.A.N.C.E Ecosystem — a multi-agent AI system orchestrated by the master agent CHANCE.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "chance": "tsx src/agents/chance/boot.ts",
+    "db:migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
+    "elevenlabs": "^0.18.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "playwright": "^1.47.2",
+    "puppeteer": "^23.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.5",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
