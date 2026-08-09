@@ -30,7 +30,7 @@ export interface RouteResult {
 }
 
 export class ModelRouter {
-  private client: Anthropic;
+  private _client: Anthropic | null;
 
   private readonly modelFor: Record<TaskComplexity, string> = {
     [TaskComplexity.BIG]: env.anthropic.modelBig,
@@ -45,7 +45,24 @@ export class ModelRouter {
   };
 
   constructor(client?: Anthropic) {
-    this.client = client ?? new Anthropic({ apiKey: env.anthropic.apiKey });
+    // Client is built lazily so an agent can be constructed (and its cheap,
+    // network-free helpers like classify()/resolveModel() used) without an
+    // ANTHROPIC_API_KEY present. The key is only required on the first live call.
+    this._client = client ?? null;
+  }
+
+  /** Lazily-instantiated Anthropic client. Throws only when actually used. */
+  private get client(): Anthropic {
+    if (!this._client) {
+      this._client = new Anthropic({ apiKey: env.anthropic.apiKey });
+    }
+    return this._client;
+  }
+
+  /** Whether a live Anthropic key looks configured (no network check). */
+  get isLive(): boolean {
+    const k = process.env.ANTHROPIC_API_KEY?.trim() ?? '';
+    return k.length > 0 && !k.includes('xxxx');
   }
 
   /** Map a complexity tier to a concrete model id. */

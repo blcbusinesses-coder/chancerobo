@@ -16,26 +16,32 @@ import type { AgentPermissions } from '../types.js';
  */
 export class AgentDatabase {
   readonly schema: string;
-  private client: SupabaseClient;
+  // Generic params left open so a dynamic (non-"public") schema is assignable.
+  private _client: SupabaseClient<any, any, any> | null = null;
   private isOverseer: boolean;
 
   constructor(schema: string, permissions: AgentPermissions) {
     this.schema = schema;
     this.isOverseer = permissions.overseer;
+  }
 
-    if (this.isOverseer) {
-      // Master keys: full cross-schema access for the Overseer.
-      this.client = createClient(env.supabase.url, env.supabase.serviceRoleKey, {
+  /**
+   * Lazily-built Supabase client. Construction stays network- and key-free so an
+   * agent can be instantiated without live Supabase creds; the client is only
+   * materialized (and env vars required) on first query.
+   *
+   *   - overseer=true  -> service role key (bypasses RLS, all schemas)
+   *   - overseer=false -> anon key (RLS-scoped to this agent's own schema)
+   */
+  private get client(): SupabaseClient<any, any, any> {
+    if (!this._client) {
+      const key = this.isOverseer ? env.supabase.serviceRoleKey : env.supabase.anonKey;
+      this._client = createClient(env.supabase.url, key, {
         auth: { persistSession: false },
-        db: { schema },
-      });
-    } else {
-      // Scoped: RLS in Postgres constrains this agent to its own schema.
-      this.client = createClient(env.supabase.url, env.supabase.anonKey, {
-        auth: { persistSession: false },
-        db: { schema },
+        db: { schema: this.schema },
       });
     }
+    return this._client;
   }
 
   /** Returns a query builder bound to a table in THIS agent's schema. */

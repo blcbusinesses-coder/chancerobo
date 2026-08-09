@@ -40,8 +40,8 @@ export class ChanceAgent extends BaseAgent {
       { system: this.systemPrompt, complexity: TaskComplexity.BIG },
     );
     await this.db
-      .remember('delegation', routed.plan, { objective })
+      .remember('delegation', routed.text, { objective })
       .catch((e) => console.warn('[chance] delegation not persisted:', e.message));
-    return { plan: routed.plan };
+    return { plan: routed.text };
   }
 }
