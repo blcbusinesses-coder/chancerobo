@@ -111,6 +111,7 @@ export abstract class BaseAgent {
       `\n- Webcam vision (FREE, local — no credits): camera_see (look through the webcam and detect what's there), hand_control (start/stop hand-tracking mouse control — index finger points, pinch clicks), configure_motion_control (which monitor/region it controls + sensitivity). Prefer camera_see for "what do you see" instead of paid image tools.` +
       `\n- Smart outlets (Geeni plugs, local — no credits): outlet_control (turn a plug on/off, toggle, or check status) and list_outlets. Use for "turn on/off the <name>".` +
       `\n- Media: play_video (play a YouTube video or URL fullscreen on the screen via the local player — no browser) and stop_video. Use for "play X on YouTube".` +
+      `\n- Projector (Pi): projector_mode (turn the projector screen on/off — "turn on the projector"), projector_show (put a 3D model / image / gallery / text on the wall), and play_video for fullscreen media.` +
       `\n- News: show_news (headlines/search as a popup list) and show_article (pull up a full article — headline, source, readable text — in a popup). Keyless.` +
       `\n- Saved values: save_value (remember a named fact like "personal email"), list_saved_values, forget_value. When the user refers to a saved value by name, use it (e.g. email "my personal email" → send to the saved address).` +
       `\n- Voice: change_voice switches your own speaking voice between presets (1 Ryan/default, 2 Guy, 3 Christopher).` +

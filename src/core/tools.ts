@@ -793,6 +793,28 @@ const TOOLS: ToolDef[] = [
   },
   {
     spec: {
+      name: 'projector_mode',
+      description:
+        "Turn the PROJECTOR SCREEN on or off. Use for 'turn on the projector screen', 'open projector mode', 'project it', 'turn off the projector'. Opens/closes a fullscreen projector view on the Pi's display. (Pi only.)",
+      input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['on', 'off'] } }, required: ['action'] },
+    },
+    handler: async (input) => {
+      const action = String(input.action);
+      if (action === 'off') {
+        await execAsync('pkill -f "projector=1"').catch(() => {});
+        return { ok: true, projector: 'off' };
+      }
+      const { spawn } = await import('node:child_process');
+      const cmd =
+        'CHROME=$(command -v chromium-browser || command -v chromium); ' +
+        '"$CHROME" --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream ' +
+        '--noerrdialogs --disable-infobars "http://localhost:8787/?projector=1" >/dev/null 2>&1 & disown';
+      spawn('bash', ['-c', cmd], { detached: true, stdio: 'ignore' }).unref();
+      return { ok: true, projector: 'on' };
+    },
+  },
+  {
+    spec: {
       name: 'projector_show',
       description:
         "Put content on the PROJECTOR screen (projector mode). Use for 'put X on the projector', 'show a 3D Y on the wall'. kind: 3d | image | gallery | text | clear. value = shape (3d) / image URL / list of URLs (gallery) / text. mode add or replace (default replace). For VIDEO on the projector, use play_video (it goes fullscreen). ",
