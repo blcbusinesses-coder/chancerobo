@@ -8,6 +8,7 @@ import { createChanceFrontendConfig } from './agents/chance/config.js';
 import { GoogleServices } from './core/functions/google.js';
 import { Vision } from './core/functions/vision.js';
 import { zapierMCP } from './core/functions/mcp.js';
+import { projector } from './core/functions/projector.js';
 import { toolSpecs } from './core/tools.js';
 import { TaskComplexity } from './core/types.js';
 
@@ -118,6 +119,10 @@ app.post('/api/voice', upload.single('audio'), async (req, res) => {
     res.status(500).json({ error: (e as Error).message });
   }
 });
+
+// ── Projector channel (the projected screen polls this) ─────────────────────
+app.get('/api/projector', (_req, res) => res.json(projector.get()));
+app.post('/api/projector/clear', (_req, res) => { projector.clear(); res.json({ ok: true }); });
 
 // ── Webcam vision (local Python service; no brain credits) ───────────────────
 const vision = new Vision();

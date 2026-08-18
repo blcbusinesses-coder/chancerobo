@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { PopupView } from './PopupView.tsx'
+import { ProjectorView } from './ProjectorView.tsx'
 
 // Desktop popup windows load this same bundle with ?popup=1 and render just the
 // floating visual instead of the full dashboard. Make the page transparent so
@@ -10,6 +11,7 @@ import { PopupView } from './PopupView.tsx'
 const params = new URLSearchParams(location.search)
 const isPopup = params.has('popup')
 const isOrb = params.has('orb')
+const isProjector = params.has('projector')
 if (isPopup || isOrb) {
   // In the Electron app the orb window is transparent (floats over your desktop).
   // In a plain browser (Raspberry Pi kiosk) there's nothing behind it, so give
@@ -25,7 +27,7 @@ if (isPopup || isOrb) {
 }
 
 createRoot(document.getElementById('root')!).render(
-  isPopup ? <PopupView /> : (
+  isPopup ? <PopupView /> : isProjector ? <ProjectorView /> : (
     <StrictMode>
       <App />
     </StrictMode>

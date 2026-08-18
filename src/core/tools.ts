@@ -17,6 +17,7 @@ import { SmartHome } from './functions/smarthome.js';
 import { WebSearch } from './functions/search.js';
 import { Media } from './functions/media.js';
 import { zapierMCP } from './functions/mcp.js';
+import { projector } from './functions/projector.js';
 
 const stocks = new Stocks();
 const spotify = new Spotify();
@@ -788,6 +789,34 @@ const TOOLS: ToolDef[] = [
       const { spawn } = await import('node:child_process');
       spawn('bash', ['pi/update.sh'], { cwd: process.cwd(), detached: true, stdio: 'ignore' }).unref();
       return { ok: true, note: 'Pulling the latest code, rebuilding, and restarting now — back in a moment. Your .env is left untouched.' };
+    },
+  },
+  {
+    spec: {
+      name: 'projector_show',
+      description:
+        "Put content on the PROJECTOR screen (projector mode). Use for 'put X on the projector', 'show a 3D Y on the wall'. kind: 3d | image | gallery | text | clear. value = shape (3d) / image URL / list of URLs (gallery) / text. mode add or replace (default replace). For VIDEO on the projector, use play_video (it goes fullscreen). ",
+      input_schema: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: ['3d', 'image', 'gallery', 'text', 'clear'] },
+          value: { description: 'shape / url / list of urls / text depending on kind' },
+          title: { type: 'string' },
+          mode: { type: 'string', enum: ['add', 'replace'] },
+        },
+        required: ['kind'],
+      },
+    },
+    handler: async (input) => {
+      const kind = String(input.kind);
+      if (kind === 'clear') { projector.clear(); return { ok: true, cleared: true }; }
+      let action: any;
+      if (kind === '3d') action = { type: 'model3d', shape: input.value || 'torusknot', title: input.title };
+      else if (kind === 'image') action = { type: 'image', data: String(input.value) };
+      else if (kind === 'gallery') action = { type: 'gallery', images: Array.isArray(input.value) ? input.value : [input.value], title: input.title };
+      else action = { type: 'document', markdown: String(input.value || ''), title: input.title };
+      if (input.mode === 'add') projector.add(action); else projector.set([action]);
+      return { ok: true, projected: kind };
     },
   },
   {
