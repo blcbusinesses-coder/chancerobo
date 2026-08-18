@@ -108,13 +108,17 @@ export class ModelRouter {
       { role: 'user', content: prompt },
     ];
 
-    const response = await this.client.messages.create({
+    const params: Anthropic.MessageCreateParamsNonStreaming = {
       model,
       max_tokens: opts.maxTokens ?? this.maxTokensFor[complexity],
-      temperature: opts.temperature ?? 0.7,
       system: opts.system,
       messages,
-    });
+    };
+    // `temperature` is deprecated/rejected on newer models — only send it if a
+    // caller explicitly asks for one.
+    if (opts.temperature !== undefined) params.temperature = opts.temperature;
+
+    const response = await this.client.messages.create(params);
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

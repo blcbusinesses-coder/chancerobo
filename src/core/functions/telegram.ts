@@ -1,5 +1,7 @@
+import { tmpdir } from 'node:os';
 import TelegramBot from 'node-telegram-bot-api';
 import { env } from '../../config/env.js';
+import { cleanForPlain } from './text.js';
 import type { InboundMessage } from '../types.js';
 
 /**
@@ -12,7 +14,9 @@ import type { InboundMessage } from '../types.js';
  *   - If TELEGRAM_WEBHOOK_BASE_URL is set, registers a webhook.
  *   - Otherwise falls back to long-polling (great for local dev).
  */
-export type MessageHandler = (msg: InboundMessage) => Promise<{ text: string; audioPath?: string }>;
+export type MessageHandler = (
+  msg: InboundMessage,
+) => Promise<{ text: string; audioPath?: string; imagePaths?: string[] }>;
 
 export class AgentTelegram {
   private bot: TelegramBot | null = null;
@@ -25,7 +29,9 @@ export class AgentTelegram {
   }
 
   get enabled(): boolean {
-    return this.token.trim().length > 0;
+    const t = this.token.trim();
+    // Reject empty and the obvious .env.example placeholder token.
+    return t.length > 0 && !t.startsWith('1234567890:') && !t.includes('AAAAAAAAAA');
   }
 
   /** Wire the bot to the agent's execution loop. No-op if no token configured. */
@@ -38,6 +44,11 @@ export class AgentTelegram {
     const usePolling = !env.telegram.webhookBaseUrl;
     this.bot = new TelegramBot(this.token, { polling: usePolling });
 
+    // A transient network blip (EFATAL/ETELEGRAM) must NOT crash the channel —
+    // just log and let polling recover on its own.
+    this.bot.on('polling_error', (e) => console.warn(`[telegram:${this.slug}] polling_error:`, (e as Error).message));
+    this.bot.on('error', (e) => console.warn(`[telegram:${this.slug}] error:`, (e as Error).message));
+
     if (!usePolling) {
       const url = `${env.telegram.webhookBaseUrl.replace(/\/$/, '')}/telegram/${this.slug}`;
       void this.bot.setWebHook(url);
@@ -46,8 +57,23 @@ export class AgentTelegram {
       console.log(`[telegram:${this.slug}] Long-polling started.`);
     }
 
+    if (!env.telegram.ownerId) {
+      console.warn(
+        `[telegram:${this.slug}] ⚠️  TELEGRAM_OWNER_ID not set — ANYONE who can message this bot can run computer commands. Set it to lock control to you.`,
+      );
+    }
+
     this.bot.on('message', async (m) => {
       try {
+        console.log(`[telegram:${this.slug}] message from id=${m.from?.id} (@${m.from?.username ?? '?'})`);
+
+        // Security lock: if an owner id is configured, only they may command the agent.
+        const ownerId = env.telegram.ownerId;
+        if (ownerId && String(m.from?.id) !== ownerId) {
+          await this.bot?.sendMessage(m.chat.id, '⛔ Not authorized to command this agent.');
+          return;
+        }
+
         const inbound: InboundMessage = {
           channel: 'telegram',
           chatId: m.chat.id,
@@ -55,24 +81,52 @@ export class AgentTelegram {
           meta: { from: m.from?.username, messageId: m.message_id },
         };
 
-        // Voice notes: hand the file path to the agent so its VoiceEngine can transcribe.
-        if (m.voice && this.bot) {
-          const link = await this.bot.getFileLink(m.voice.file_id);
-          inbound.audioPath = link;
-          inbound.text = inbound.text || '[voice message]';
+        // Voice notes / audio: download locally so the VoiceEngine can transcribe the file.
+        const media = m.voice ?? m.audio;
+        if (media && this.bot) {
+          inbound.audioPath = await this.bot.downloadFile(media.file_id, tmpdir());
+          inbound.text = ''; // let transcription fill it
         }
 
         const reply = await handler(inbound);
-        if (this.bot) {
-          if (reply.audioPath) {
-            await this.bot.sendVoice(m.chat.id, reply.audioPath, { caption: reply.text.slice(0, 1024) });
-          } else {
-            await this.bot.sendMessage(m.chat.id, reply.text);
+        if (!this.bot) return;
+
+        // Telegram shows raw HTML/Markdown literally — flatten to clean plain text.
+        const cleanText = cleanForPlain(reply.text);
+        const caption0 = cleanText.slice(0, 1024);
+        let textDelivered = false;
+        // Deliver any files a tool produced (e.g. screenshots) as photos.
+        if (reply.imagePaths?.length) {
+          for (let i = 0; i < reply.imagePaths.length; i++) {
+            try {
+              await this.bot.sendPhoto(m.chat.id, reply.imagePaths[i], i === 0 ? { caption: caption0 } : {});
+              if (i === 0) textDelivered = true;
+            } catch (e) {
+              console.warn(`[telegram:${this.slug}] photo send failed:`, (e as Error).message);
+            }
           }
+        }
+
+        if (reply.audioPath) {
+          const caption = cleanText.slice(0, 1024);
+          // Prefer a voice bubble; fall back to an audio file; finally to text.
+          try {
+            await this.bot.sendVoice(m.chat.id, reply.audioPath, { caption });
+          } catch {
+            try {
+              await this.bot.sendAudio(m.chat.id, reply.audioPath, { caption });
+            } catch (e) {
+              console.warn(`[telegram:${this.slug}] audio send failed, sending text:`, (e as Error).message);
+              await this.bot.sendMessage(m.chat.id, cleanText);
+            }
+          }
+        } else if (!textDelivered) {
+          await this.bot.sendMessage(m.chat.id, cleanText);
         }
       } catch (err) {
         console.error(`[telegram:${this.slug}] handler error:`, err);
-        if (this.bot) await this.bot.sendMessage(m.chat.id, '⚠️ Something broke on my end. Try again.');
+        // Guard the error-reply too — a network failure here must not crash the process.
+        if (this.bot) await this.bot.sendMessage(m.chat.id, '⚠️ Something broke on my end. Try again.').catch(() => {});
       }
     });
   }
@@ -80,7 +134,7 @@ export class AgentTelegram {
   /** Push a message proactively (used by CHANCE for delegation / alerts). */
   async send(chatId: string | number, text: string): Promise<void> {
     if (!this.bot) throw new Error(`[telegram:${this.slug}] Bot not started.`);
-    await this.bot.sendMessage(chatId, text);
+    await this.bot.sendMessage(chatId, cleanForPlain(text));
   }
 
   async stop(): Promise<void> {

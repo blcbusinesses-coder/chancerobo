@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHANCE — Overseer Console</title>
+<style>
+  /* Injected from AgentIdentityModule.toFrontendConfig().cssVars */
+  :root {
+    --agent-primary: #00E5FF;
+    --agent-secondary: #0A1929;
+    --agent-accent: #FFB300;
+    --agent-bg: #050B18;
+    --agent-fg: #E6F1FF;
+    --panel: #0B1B2E;
+    --panel-2: #0e2136;
+    --line: rgba(0,229,255,0.14);
+    --muted: #7d93ad;
+    --ok: #29e0a8;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--agent-fg);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(0,229,255,0.08), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(124,77,255,0.10), transparent 60%),
+      var(--agent-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px clamp(14px, 3vw, 28px) 40px; }
+
+  /* ---- header ---- */
+  header.top {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 18px; border: 1px solid var(--line); border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--secondary, #0A1929));
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 20px 50px -30px rgba(0,229,255,0.6);
+  }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 14px; flex: none;
+    background: radial-gradient(circle at 50% 35%, #0af 0%, #05314a 60%, #041524 100%);
+    border: 1px solid rgba(0,229,255,0.5); position: relative; overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .avatar svg { width: 34px; height: 34px; }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand h1 { margin: 0; font-size: 22px; letter-spacing: 0.5px; }
+  .brand h1 b { color: var(--agent-primary); font-weight: 800; }
+  .brand .role { color: var(--muted); font-size: 12.5px; letter-spacing: 0.3px; }
+  .spacer { flex: 1; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px;
+    padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(41,224,168,0.35);
+    background: rgba(41,224,168,0.08); color: var(--ok); font-weight: 600;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+    box-shadow: 0 0 0 0 rgba(41,224,168,0.7); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(41,224,168,.6)} 70%{box-shadow:0 0 0 8px rgba(41,224,168,0)} 100%{box-shadow:0 0 0 0 rgba(41,224,168,0)} }
+
+  /* ---- grid ---- */
+  .grid { display: grid; grid-template-columns: 250px 1fr 300px; gap: 16px; margin-top: 16px; }
+  @media (max-width: 960px){ .grid { grid-template-columns: 1fr; } }
+  .panel {
+    border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    padding: 16px; min-height: 60px;
+  }
+  .panel h2 {
+    margin: 0 0 12px; font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+  }
+
+  /* agent roster */
+  .agent { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; }
+  .agent.active { background: rgba(0,229,255,0.07); border: 1px solid var(--line); }
+  .agent .glyph { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+    background: rgba(0,229,255,0.12); color: var(--agent-primary); font-weight: 800; font-size: 13px; }
+  .agent .meta { display: flex; flex-direction: column; }
+  .agent .meta b { font-size: 13.5px; }
+  .agent .meta span { font-size: 11px; color: var(--muted); }
+  .agent.ghost { opacity: 0.5; }
+  .agent.ghost .glyph { background: rgba(125,147,173,0.12); color: var(--muted); }
+  .roster-note { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  /* chat */
+  .chat { display: flex; flex-direction: column; gap: 12px; min-height: 340px; }
+  .msg { max-width: 88%; padding: 11px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; }
+  .msg.user { align-self: flex-end; background: var(--panel-2); border: 1px solid var(--line); border-bottom-right-radius: 5px; }
+  .msg.bot { align-self: flex-start; background: linear-gradient(180deg, rgba(0,229,255,0.10), rgba(0,229,255,0.04));
+    border: 1px solid rgba(0,229,255,0.28); border-bottom-left-radius: 5px; }
+  .msg .who { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .msg.bot .who { color: var(--agent-primary); }
+  .tierpill { font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 6px;
+    background: rgba(255,179,0,0.14); color: var(--agent-accent); margin-left: 6px; }
+  .composer { display: flex; gap: 8px; margin-top: 6px; }
+  .composer input { flex: 1; background: var(--agent-bg); border: 1px solid var(--line); color: var(--agent-fg);
+    border-radius: 11px; padding: 12px 14px; font-size: 14px; outline: none; font-family: var(--font); }
+  .composer input:focus { border-color: rgba(0,229,255,0.5); }
+  .composer button, .mic { background: var(--agent-primary); color: #04222c; border: none; font-weight: 700;
+    border-radius: 11px; padding: 0 16px; cursor: pointer; font-size: 14px; }
+  .mic { background: rgba(124,77,255,0.9); color: #fff; padding: 0 13px; }
+
+  /* right rail */
+  .tier { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 11px;
+    border: 1px solid var(--line); margin-bottom: 9px; background: var(--panel-2); }
+  .tier .badge { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 7px; flex: none; }
+  .tier.big .badge { background: rgba(124,77,255,0.18); color: #b39bff; }
+  .tier.med .badge { background: rgba(0,229,255,0.16); color: var(--agent-primary); }
+  .tier.small .badge { background: rgba(255,179,0,0.16); color: var(--agent-accent); }
+  .tier .model { font-family: var(--mono); font-size: 11.5px; color: var(--agent-fg); }
+  .tier .use { font-size: 10.5px; color: var(--muted); }
+  .tier.selected { outline: 1px solid rgba(255,179,0,0.5); box-shadow: 0 0 22px -8px rgba(255,179,0,0.5); }
+
+  .func { display: flex; align-items: center; gap: 9px; padding: 8px 4px; font-size: 13px; border-bottom: 1px dashed rgba(125,147,173,0.14); }
+  .func:last-child { border-bottom: none; }
+  .func .chk { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center;
+    background: rgba(41,224,168,0.14); color: var(--ok); font-size: 11px; flex: none; }
+  .func .n { flex: 1; }
+  .func .tag { font-size: 9.5px; color: var(--muted); font-family: var(--mono); }
+
+  .telem { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--panel-2); }
+  .stat .v { font-size: 18px; font-weight: 800; color: var(--agent-primary); }
+  .stat.accent .v { color: var(--agent-accent); }
+  .stat .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+
+  footer { margin-top: 18px; color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.6; }
+  code { font-family: var(--mono); color: var(--agent-primary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="avatar" title="Chance">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#001b24" stroke-width="1.6">
+        <rect x="4" y="7" width="16" height="12" rx="3" fill="#7de9ff" stroke="#02323f"/>
+        <circle cx="9" cy="13" r="1.6" fill="#02323f"/><circle cx="15" cy="13" r="1.6" fill="#02323f"/>
+        <path d="M12 3v3M9 16.5h6" stroke="#02323f" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <h1><b>CHANCE</b> · Overseer Console</h1>
+      <div class="role">Master Overseer / System Orchestrator — Beckitt</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="status"><span class="dot"></span> ONLINE · Agent Zero</div>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: agent roster -->
+    <section class="panel" aria-label="agent-roster">
+      <h2>Agent Roster</h2>
+      <div class="agent active">
+        <div class="glyph">C</div>
+        <div class="meta"><b>Chance</b><span>overseer · all schemas</span></div>
+      </div>
+      <div class="agent ghost">
+        <div class="glyph">+</div>
+        <div class="meta"><b>sub-agent slot</b><span>awaiting spawn</span></div>
+      </div>
+      <div class="agent ghost">
+        <div class="glyph">+</div>
+        <div class="meta"><b>sub-agent slot</b><span>awaiting spawn</span></div>
+      </div>
+      <p class="roster-note">Every spawned agent inherits the 5 mandatory functions and its own RLS-scoped schema. Chance holds master keys across all of them.</p>
+    </section>
+
+    <!-- CENTER: chat console -->
+    <section class="panel" aria-label="chat">
+      <h2>Execution Console</h2>
+      <div class="chat" id="chat">
+        <div class="msg user"><div class="who">Beckitt</div>Chance, confirm you're online and give me a one-line status.</div>
+        <div class="msg bot"><div class="who">Chance <span class="tierpill">SMALL · haiku</span></div>Online, keys hot, five functions armed. Everything's green — try to keep it that way.</div>
+        <div class="msg user"><div class="who">Beckitt</div>Design the message bus for spawning sub-agents.</div>
+        <div class="msg bot"><div class="who">Chance <span class="tierpill">BIG · opus-4.8</span></div>That's real architecture, so I'm routing myself to Opus. Give me the constraints and I'll hand you a schema, the queue contract, and the RLS policy — not a pep talk.</div>
+      </div>
+      <div class="composer">
+        <input id="inp" placeholder="Message Chance…  (try: &quot;scrape this page&quot; vs &quot;architect the auth system&quot;)" />
+        <button id="mic" class="mic" title="Voice (Whisper → ElevenLabs)">🎙</button>
+        <button id="send">Send</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: router + functions + telemetry -->
+    <section class="panel" aria-label="telemetry">
+      <h2>Tri-Tier Model Router</h2>
+      <div class="tier big" id="tier-BIG">
+        <span class="badge">BIG</span>
+        <div><div class="model">claude-opus-4-8</div><div class="use">architecture · code · planning</div></div>
+      </div>
+      <div class="tier med" id="tier-MEDIUM">
+        <span class="badge">MED</span>
+        <div><div class="model">claude-sonnet-5</div><div class="use">conversation · orchestration</div></div>
+      </div>
+      <div class="tier small" id="tier-SMALL">
+        <span class="badge">SML</span>
+        <div><div class="model">claude-haiku-4-5</div><div class="use">browser · scrape · classify</div></div>
+      </div>
+
+      <h2 style="margin-top:18px">5 Mandatory Functions</h2>
+      <div class="func"><span class="chk">✓</span><span class="n">Dedicated Supabase + RLS</span><span class="tag">db</span></div>
+      <div class="func"><span class="chk">✓</span><span class="n">Headless Browser</span><span class="tag">puppeteer</span></div>
+      <div class="func"><span class="chk">✓</span><span class="n">Voice (Whisper + ElevenLabs)</span><span class="tag">voice</span></div>
+      <div class="func"><span class="chk">✓</span><span class="n">Dedicated Telegram Bot</span><span class="tag">telegram</span></div>
+      <div class="func"><span class="chk">✓</span><span class="n">Custom UI Identity</span><span class="tag">identity</span></div>
+
+      <h2 style="margin-top:18px">Telemetry</h2>
+      <div class="telem">
+        <div class="stat"><div class="v">1</div><div class="k">Agents online</div></div>
+        <div class="stat accent"><div class="v">3</div><div class="k">Model tiers</div></div>
+        <div class="stat"><div class="v">∞</div><div class="k">Schema access</div></div>
+        <div class="stat accent"><div class="v">5/5</div><div class="k">Functions</div></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    Routing preview is client-side and mirrors <code>ModelRouter.classify()</code>. &nbsp;·&nbsp;
+    Identity rendered from <code>AgentIdentityModule.toFrontendConfig()</code>. &nbsp;·&nbsp;
+    C.H.A.N.C.E Ecosystem — Agent Zero.
+  </footer>
+</div>
+
+<script>
+  // Mirror of ModelRouter.classify() so the console demonstrates real routing.
+  const BIG = ['architect','architecture','design a','refactor','implement','build a','write code','generate code','plan','strategy','migrate','debug','algorithm','multi-step'];
+  const SMALL = ['navigate','scrape','click','extract text','classify','is this','yes or no','label','summarize in one','update the ui','format','parse','lookup','fetch the page'];
+  const MODEL = { BIG: 'claude-opus-4-8', MEDIUM: 'claude-sonnet-5', SMALL: 'claude-haiku-4-5' };
+  const SHORT = { BIG: 'BIG · opus-4.8', MEDIUM: 'MEDIUM · sonnet-5', SMALL: 'SMALL · haiku' };
+
+  function classify(p){
+    const t = p.toLowerCase();
+    if (BIG.some(s => t.includes(s))) return 'BIG';
+    if (SMALL.some(s => t.includes(s))) return 'SMALL';
+    if (p.length > 1500) return 'BIG';
+    return 'MEDIUM';
+  }
+  function highlight(tier){
+    ['BIG','MEDIUM','SMALL'].forEach(k => document.getElementById('tier-'+k).classList.toggle('selected', k===tier));
+  }
+  const chat = document.getElementById('chat');
+  const inp = document.getElementById('inp');
+  function push(cls, who, html){
+    const d = document.createElement('div'); d.className = 'msg '+cls;
+    d.innerHTML = '<div class="who">'+who+'</div>'+html; chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  }
+  function send(){
+    const v = inp.value.trim(); if(!v) return;
+    push('user','Beckitt', v.replace(/</g,'&lt;'));
+    const tier = classify(v); highlight(tier);
+    const replies = {
+      BIG: "Heavy lift — I'm on Opus for this. Send the constraints and you'll get the real artifact.",
+      MEDIUM: "Got it. Sonnet handles this cleanly — consider it in motion.",
+      SMALL: "Quick one. Haiku's already on it — fast and cheap, the way you like it."
+    };
+    setTimeout(()=> push('bot','Chance <span class="tierpill">'+SHORT[tier]+'</span>', replies[tier]), 260);
+    inp.value='';
+  }
+  document.getElementById('send').onclick = send;
+  document.getElementById('mic').onclick = ()=> push('bot','Chance <span class="tierpill">voice</span>', 'Voice pipeline: Whisper transcribes you in, ElevenLabs speaks me back. Wire the keys and I\\'ll talk.');
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') send(); });
+  highlight('BIG');
+</script>
+</body>
+</html>

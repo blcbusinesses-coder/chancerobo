@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+:root {
+  --jarvis-blue: #2F6FFF;
+  --jarvis-dark: #0A1929;
+  --jarvis-panel: rgba(0, 0, 0, 0.72);
+  --jarvis-border: rgba(47, 111, 255, 0.45);
+  --jarvis-glow: rgba(47, 111, 255, 0.6);
+  
+  --bg-color: #020710;
+  --text-color: #E6F1FF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(47, 111, 255, 0.05) 0%, transparent 60%),
+    linear-gradient(rgba(47, 111, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 111, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  color: var(--text-color);
+  font-family: 'Roboto Mono', monospace;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.panel {
+  background: var(--jarvis-panel);
+  border: 1px solid var(--jarvis-border);
+  box-shadow: 0 0 15px rgba(47, 111, 255, 0.1) inset;
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 1rem;
+}

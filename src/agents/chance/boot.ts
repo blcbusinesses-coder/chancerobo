@@ -1,4 +1,5 @@
 import { ChanceAgent } from './ChanceAgent.js';
+import { startApiServer } from '../../api/server.js';
 
 /**
  * Boot CHANCE: instantiate Agent Zero, activate its channels, and keep alive.
@@ -13,6 +14,8 @@ async function main() {
   console.log(chance.identity.toJSON());
 
   chance.activate();
+
+  startApiServer(chance, Number(process.env.PORT) || 8787);
 
   // A quick self-test through the tri-tier router (skips gracefully w/o API key).
   try {

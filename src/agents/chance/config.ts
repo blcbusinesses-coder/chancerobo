@@ -1,5 +1,6 @@
 import { env } from '../../config/env.js';
 import type { AgentDefinition } from '../../core/types.js';
+import { AgentIdentityModule } from '../../core/functions/identity.js';
 import { CHANCE_PERSONA } from './prompt.js';
 
 /**
@@ -31,3 +32,12 @@ export const CHANCE_DEFINITION: AgentDefinition = {
   telegramToken: env.telegram.tokenChance,
   voiceId: env.elevenlabs.voiceIdChance,
 };
+
+/**
+ * The exact frontend "look" config the web dashboard consumes for CHANCE
+ * (Mandatory Function #5) — name, theme, avatar, layout + ready-to-inject
+ * CSS custom properties.
+ */
+export function createChanceFrontendConfig() {
+  return new AgentIdentityModule(CHANCE_DEFINITION.identity).toFrontendConfig();
+}

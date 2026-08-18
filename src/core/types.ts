@@ -71,4 +71,8 @@ export interface AgentResult {
   complexity: TaskComplexity;
   /** Optional path to generated speech audio. */
   audioPath?: string;
+  /** Files (e.g. screenshots) a tool produced, to be delivered to the user. */
+  imagePaths?: string[];
+  /** Action for the UI to display in the main JARVIS interface (e.g. file, image, map) */
+  uiAction?: any;
 }

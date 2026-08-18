@@ -1,5 +1,8 @@
 # C.H.A.N.C.E Ecosystem
 
+> 📌 **Building the UI or picking up this project? Read [PROJECT_BRIEF.md](PROJECT_BRIEF.md) first** —
+> it's the full context, current status, visual identity, and the API/UI contract to build against.
+
 A multi-agent AI system orchestrated by the master agent **CHANCE**. This repo is the
 **foundation**: the core agent template (5 Mandatory Functions), tri-tier Claude model
 routing, and Agent Zero — CHANCE — instantiated.
@@ -30,6 +33,9 @@ supabase/migrations/
 └── 0001_chance_schema_and_rls.sql  # schema, RLS policies, Overseer grants, registry
 
 scripts/migrate.ts                 # applies migrations via service-role key
+scripts/demo.ts                    # offline tri-tier routing demo (no keys needed)
+
+dashboard/index.html               # #5 the "look" — CHANCE Overseer Console (static)
 ```
 
 ## The 5 Mandatory Agent Functions
@@ -76,6 +82,15 @@ npm run chance
 ```
 
 Without an `ANTHROPIC_API_KEY` the boot self-test is skipped but the agent still starts.
+
+See it work with **no keys at all**:
+
+```bash
+npm run demo                  # prints live tier classification + CHANCE's identity config
+```
+
+Open `dashboard/index.html` in a browser for the Overseer Console (Mandatory Function #5) —
+it mirrors `ModelRouter.classify()` client-side, so typing a task highlights the tier it routes to.
 
 ## Adding a new agent
 

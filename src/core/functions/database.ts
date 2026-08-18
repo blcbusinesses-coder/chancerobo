@@ -83,4 +83,34 @@ export class AgentDatabase {
     if (error) throw new Error(`[db] recall() failed: ${error.message}`);
     return data ?? [];
   }
+
+  // ── Saved values (user-taught facts: "personal email", "home address", …) ──
+
+  /** Upsert a named value. Label is normalized (trimmed, lower-cased) for stable lookup. */
+  async saveValue(label: string, value: string, category?: string) {
+    const key = label.trim().toLowerCase();
+    const { error } = await this.table('saved_values').upsert(
+      { label: key, value: value.trim(), category: category ?? null, updated_at: new Date().toISOString() },
+      { onConflict: 'label' },
+    );
+    if (error) throw new Error(`[db] saveValue() failed: ${error.message}`);
+    return { label: key, value: value.trim() };
+  }
+
+  /** All saved values (newest first). */
+  async savedValues(): Promise<{ label: string; value: string; category: string | null }[]> {
+    const { data, error } = await this.table('saved_values')
+      .select('label,value,category')
+      .order('updated_at', { ascending: false });
+    if (error) throw new Error(`[db] savedValues() failed: ${error.message}`);
+    return (data as { label: string; value: string; category: string | null }[]) ?? [];
+  }
+
+  /** Delete a saved value by label. */
+  async forgetValue(label: string) {
+    const key = label.trim().toLowerCase();
+    const { error } = await this.table('saved_values').delete().eq('label', key);
+    if (error) throw new Error(`[db] forgetValue() failed: ${error.message}`);
+    return { forgot: key };
+  }
 }

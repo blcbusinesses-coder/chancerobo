@@ -1,0 +1,5 @@
+# C.H.A.N.C.E vision service — local, free, no API credits.
+mediapipe==1.0.0        # hand + object models (pulls opencv-contrib + numpy)
+flask==3.1.0            # tiny local HTTP service Chance calls
+pyautogui==0.9.54       # move/click the real cursor from tracked hands
+requests==2.32.3        # model downloads
