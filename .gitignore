@@ -60,8 +60,8 @@ desktop/
 chance-pi-ui/
 chance-pi-usb/
 public/
-frontend/dist/
 *.cjs
+# NOTE: frontend/dist IS committed (pre-built) so the Pi never has to build the UI.
 # Downloaded ML models (fetched by setup scripts, too big for git)
 vision/models/*.tflite
 vision/models/*.task

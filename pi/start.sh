@@ -10,9 +10,11 @@ if need_node; then
   sudo apt-get install -y nodejs
 fi
 
-echo ">> Installing deps (first run only takes a few min)..."
-PUPPETEER_SKIP_DOWNLOAD=true npm install
-( cd frontend && PUPPETEER_SKIP_DOWNLOAD=true npm install && npm run build )
+echo ">> Installing backend deps (first run takes a few min)..."
+npm config set fetch-timeout 600000 >/dev/null 2>&1 || true
+npm config set fetch-retries 5 >/dev/null 2>&1 || true
+PUPPETEER_SKIP_DOWNLOAD=true npm install --no-audit --no-fund
+# The UI is pre-built and committed (frontend/dist) — nothing to build on the Pi.
 
 echo ">> Starting backend..."
 npm run server &

@@ -7,10 +7,8 @@ echo ">> Pulling latest code..."
 git pull --ff-only
 
 echo ">> Syncing dependencies..."
-PUPPETEER_SKIP_DOWNLOAD=true npm install
-
-echo ">> Rebuilding his UI..."
-( cd frontend && PUPPETEER_SKIP_DOWNLOAD=true npm install && npm run build )
+PUPPETEER_SKIP_DOWNLOAD=true npm install --no-audit --no-fund
+# UI is pre-built in the repo (frontend/dist) — pulled in by git, no build needed.
 
 echo ">> Restarting Chance..."
 if command -v pm2 >/dev/null 2>&1 && pm2 describe chance >/dev/null 2>&1; then
