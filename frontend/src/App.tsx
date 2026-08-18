@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Settings, MessageSquare, X, Eye, Hand, Plus } from 'lucide-react';
+import { Mic, MicOff, Settings, MessageSquare, X, Eye, Hand, Plus, Projector, Minimize2, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Panel } from './Panel';
@@ -150,6 +150,29 @@ function App() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // If Chance turns the projector ON by voice, jump this screen into projector mode.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('projector')) return;
+    const t = setInterval(() => {
+      fetch(API + '/api/projector').then((r) => r.json()).then((d) => {
+        if (d?.active) window.location.href = '/?projector=1';
+      }).catch(() => {});
+    }, 1500);
+    return () => clearInterval(t);
+  }, []);
+
+  // View navigation (works in the Pi browser via URL; the desktop app has its own windows).
+  const goOrb = () => { window.location.href = '/?orb=1'; };
+  const goProjector = () => {
+    fetch(API + '/api/projector/active', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: true }) }).catch(() => {});
+    window.location.href = '/?projector=1';
+  };
+  const minimizeWindow = () => {
+    const d = (window as any).chanceDesktop;
+    if (d?.minimize) d.minimize();
+    else { try { window.close(); } catch { window.location.href = '/'; } }
+  };
 
   // Short synth chime: rising = wake, falling = sleep.
   const chime = (kind: 'wake' | 'sleep') => {
@@ -468,6 +491,7 @@ function App() {
         className="orb-root"
         onWheel={(e) => (window as any).chanceDesktop?.resizeWindow?.(e.deltaY < 0 ? 26 : -26)}
       >
+        <button className="orb-mini" onClick={minimizeWindow} title="Minimize"><Minimize2 size={16} /></button>
         <div className="orb-stage">
           {menu.map((m, i) => {
             const a = (angles[i] * Math.PI) / 180;
@@ -547,6 +571,15 @@ function App() {
           </button>
           <button onClick={() => setShowSettings(!showSettings)} className={`icon-btn ${showSettings ? 'active' : ''}`}>
             <Settings size={20} />
+          </button>
+          <button onClick={goOrb} className="icon-btn" title="Switch to floating brain (orb)">
+            <Sparkles size={20} />
+          </button>
+          <button onClick={goProjector} className="icon-btn" title="Projector mode">
+            <Projector size={20} />
+          </button>
+          <button onClick={minimizeWindow} className="icon-btn" title="Minimize">
+            <Minimize2 size={20} />
           </button>
         </div>
       </header>

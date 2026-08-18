@@ -435,10 +435,14 @@
 .orb-subtitle { position: absolute; bottom: 2vmin; left: 50%; transform: translateX(-50%); max-width: 90%; text-align: center; color: #cfe0ff; font-size: 12.5px; background: rgba(6,12,24,.72); padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(47,111,255,.3); }
 
 /* ── Projector mode (?projector=1) — big, high-contrast for a wall ──────── */
-.proj-root { position: fixed; inset: 0; background: #03050b; color: #e6f1ff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.proj-idle { text-align: center; }
-.proj-brain { width: 34vmin; height: 34vmin; object-fit: contain; filter: drop-shadow(0 0 5vmin rgba(47,111,255,.6)); animation: orbpulse 3s ease-in-out infinite; }
-.proj-hint { margin-top: 3vh; letter-spacing: 3px; font-size: 2.4vh; color: #5b9cff; font-weight: 700; }
+.proj-root { position: fixed; inset: 0; background: #000; color: #e6f1ff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+/* Idle: pure black with a soft blue hue — nothing else. */
+.proj-empty { position: fixed; inset: 0; background: radial-gradient(circle at 50% 55%, rgba(47,111,255,.16) 0%, rgba(47,111,255,.05) 35%, #000 75%); animation: projhue 6s ease-in-out infinite; }
+@keyframes projhue { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
+.proj-back { position: fixed; top: 3vh; left: 3vh; z-index: 100; display: flex; align-items: center; gap: 6px; padding: 1.4vh 2.2vh; font-size: 2vh; font-weight: 700; color: #8fb4ff; background: rgba(10,20,40,.6); border: 1px solid rgba(47,111,255,.5); border-radius: 12px; cursor: pointer; backdrop-filter: blur(8px); }
+.proj-back:hover { color: #fff; border-color: #2F6FFF; box-shadow: 0 0 20px rgba(47,111,255,.5); }
+.orb-mini { position: absolute; top: 14px; left: 14px; z-index: 60; width: 32px; height: 32px; border-radius: 50%; -webkit-app-region: no-drag; display: flex; align-items: center; justify-content: center; background: rgba(10,20,40,.55); border: 1px solid rgba(47,111,255,.4); color: #8fb4ff; cursor: pointer; opacity: .5; transition: opacity .2s, color .2s; }
+.orb-mini:hover { opacity: 1; color: #fff; border-color: #2F6FFF; }
 .proj-grid { display: grid; gap: 2vmin; width: 96vw; height: 92vh; padding: 2vh; grid-template-columns: repeat(auto-fit, minmax(38vw, 1fr)); align-content: center; }
 .proj-grid.one { grid-template-columns: 1fr; }
 .proj-card { background: rgba(8,16,32,.7); border: 2px solid rgba(47,111,255,.5); border-radius: 2vmin; padding: 2.5vmin; overflow: auto; box-shadow: 0 0 6vmin rgba(47,111,255,.25); font-size: 1.6vh; }

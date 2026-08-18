@@ -20,9 +20,13 @@ export function Panel({ title, text, action, index, onClose }: {
   const [full, setFull] = useState(false);
   const [z, setZ] = useState(() => ++zCounter);
   const [rect, setRect] = useState<Rect>(() => {
-    const width = 540, height = 460;
-    const off = (index % 6) * 36;
-    return { left: Math.max(20, window.innerWidth - width - 24 - off), top: 84 + off, width, height };
+    const width = 520, height = 440;
+    // Spread them out — step across in a wider staggered cascade so they don't pile up.
+    const col = index % 3;
+    const row = Math.floor(index / 3) % 3;
+    const left = Math.max(20, window.innerWidth - width - 30 - col * (width * 0.55));
+    const top = 80 + row * 90 + col * 30;
+    return { left, top, width, height };
   });
   const dragRef = useRef<{ sx: number; sy: number; l: number; t: number } | null>(null);
   const resizeRef = useRef<(Rect & { sx: number; sy: number; dir: string }) | null>(null);

@@ -10,6 +10,7 @@ import { setVoice } from './functions/voice.js';
 import { toolSpecs, toolHandler } from './tools.js';
 import { converse } from './brain.js';
 import { cleanForMarkdown } from './functions/text.js';
+import { projector } from './functions/projector.js';
 import { minimaxCostCents } from './pricing.js';
 import { env } from '../config/env.js';
 import type { AgentDefinition, AgentResult, InboundMessage, TaskComplexity } from './types.js';
@@ -232,6 +233,8 @@ export abstract class BaseAgent {
     if (this._uiActions.length) {
       result.uiAction = this._uiActions[0]; // back-compat (first)
       (result as { uiActions?: any[] }).uiActions = [...this._uiActions];
+      // Projector mode: mirror EVERY visual he makes onto the projected screen.
+      if (projector.active()) for (const a of this._uiActions) projector.add(a);
     }
 
     // Voice-in → voice-out, UNLESS the message explicitly asks for a text reply.

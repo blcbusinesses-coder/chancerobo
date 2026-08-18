@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { ToolView } from './ToolView';
 
 /**
- * PROJECTOR MODE (?projector=1). A big, high-contrast, gesture-ready surface for
- * a wall projection. Polls the projector channel and shows whatever Chance puts
- * there — big. Content is set by voice today; hand-gesture interaction (the AI
- * vision layer) drives/moves these next.
+ * PROJECTOR MODE (?projector=1). Idle = pure black with a subtle blue hue.
+ * Otherwise shows EVERY visual Chance puts here (any popup type), spaced in a
+ * grid. A Back button returns to the orb.
  */
 const API = 'http://localhost:8787';
 
@@ -20,18 +20,20 @@ export function ProjectorView() {
         .then((d) => { if (alive) setItems(d.items || []); })
         .catch(() => {});
     poll();
-    const t = setInterval(poll, 1200);
+    const t = setInterval(poll, 1000);
     return () => { alive = false; clearInterval(t); };
   }, []);
 
+  const back = () => {
+    fetch(API + '/api/projector/active', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: false }) }).catch(() => {});
+    window.location.href = '/?orb=1';
+  };
+
   return (
     <div className="proj-root">
+      <button className="proj-back" onClick={back} title="Back"><ChevronLeft size={22} /> Back</button>
       {items.length === 0 ? (
-        <div className="proj-idle">
-          <img src="/chance-brain-hero.png" alt="Chance" className="proj-brain"
-               onError={(e) => { (e.target as HTMLImageElement).src = '/chance_brain2.png'; }} />
-          <div className="proj-hint">PROJECTOR MODE — ready. Tell Chance what to show.</div>
-        </div>
+        <div className="proj-empty" />
       ) : (
         <div className={`proj-grid ${items.length === 1 ? 'one' : ''}`}>
           {items.map((a, i) => (

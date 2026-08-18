@@ -123,6 +123,7 @@ app.post('/api/voice', upload.single('audio'), async (req, res) => {
 // ── Projector channel (the projected screen polls this) ─────────────────────
 app.get('/api/projector', (_req, res) => res.json(projector.get()));
 app.post('/api/projector/clear', (_req, res) => { projector.clear(); res.json({ ok: true }); });
+app.post('/api/projector/active', (req, res) => { projector.setActive(Boolean(req.body?.on)); res.json({ ok: true, active: projector.active() }); });
 
 // ── Webcam vision (local Python service; no brain credits) ───────────────────
 const vision = new Vision();

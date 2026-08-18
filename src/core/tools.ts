@@ -799,18 +799,10 @@ const TOOLS: ToolDef[] = [
       input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['on', 'off'] } }, required: ['action'] },
     },
     handler: async (input) => {
-      const action = String(input.action);
-      if (action === 'off') {
-        await execAsync('pkill -f "projector=1"').catch(() => {});
-        return { ok: true, projector: 'off' };
-      }
-      const { spawn } = await import('node:child_process');
-      const cmd =
-        'CHROME=$(command -v chromium-browser || command -v chromium); ' +
-        '"$CHROME" --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream ' +
-        '--noerrdialogs --disable-infobars "http://localhost:8787/?projector=1" >/dev/null 2>&1 & disown';
-      spawn('bash', ['-c', cmd], { detached: true, stdio: 'ignore' }).unref();
-      return { ok: true, projector: 'on' };
+      const on = String(input.action) === 'on';
+      projector.setActive(on);
+      // The on-screen UI polls this and switches to/from the projector view.
+      return { ok: true, projector: on ? 'on' : 'off' };
     },
   },
   {
