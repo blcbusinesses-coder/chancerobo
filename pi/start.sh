@@ -20,9 +20,13 @@ echo ">> Starting backend..."
 npm run server &
 for i in $(seq 1 40); do curl -s http://localhost:8787/api/health >/dev/null 2>&1 && break; sleep 1; done
 
+# Clear any stale cached page so an update never shows a white/old screen.
+rm -rf ~/.cache/chromium/Default/Cache ~/.cache/chromium/Default/"Code Cache" 2>/dev/null || true
+
 CHROME="$(command -v chromium-browser || command -v chromium || echo chromium-browser)"
 echo ">> Opening his brain fullscreen..."
 "$CHROME" --kiosk --autoplay-policy=no-user-gesture-required --use-fake-ui-for-media-stream \
+  --disk-cache-size=1 --disable-application-cache \
   --noerrdialogs --disable-infobars "http://localhost:8787/?orb=1" &
 
 echo ">> Chance is live. (Alt+F4 to exit, Ctrl+C to stop.)"

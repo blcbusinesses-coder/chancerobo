@@ -34,8 +34,13 @@ app.use('/media/audio', express.static(path.resolve('audio_cache')));
 
 // Serve the built dashboard (Raspberry Pi kiosk). Checks ./public (bundled) and
 // ./frontend/dist (running from source). Harmless on the desktop.
-app.use(express.static(path.resolve('public')));
-app.use(express.static(path.resolve('frontend/dist')));
+// index.html is served with no-store so a browser never shows a STALE page after
+// an update (the old cached html would point to deleted JS → white screen).
+const noCacheHtml = (res: express.Response, p: string) => {
+  if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-store, must-revalidate');
+};
+app.use(express.static(path.resolve('public'), { setHeaders: noCacheHtml }));
+app.use(express.static(path.resolve('frontend/dist'), { setHeaders: noCacheHtml }));
 
 const ext = (mime: string) =>
   mime.includes('webm') ? 'webm' : mime.includes('ogg') ? 'ogg' : mime.includes('wav') ? 'wav' : mime.includes('mp4') || mime.includes('m4a') ? 'm4a' : 'mp3';
