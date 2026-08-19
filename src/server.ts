@@ -128,6 +128,8 @@ app.post('/api/voice', upload.single('audio'), async (req, res) => {
 app.get('/api/projector', (_req, res) => res.json(projector.get()));
 app.post('/api/projector/clear', (_req, res) => { projector.clear(); res.json({ ok: true }); });
 app.post('/api/projector/active', (req, res) => { projector.setActive(Boolean(req.body?.on)); res.json({ ok: true, active: projector.active() }); });
+// The vision service posts the live hand-gesture cursor here (x,y in 0..1 + pinch).
+app.post('/api/projector/gesture', (req, res) => { projector.setGesture(req.body || {}); res.json({ ok: true }); });
 
 // ── Webcam vision (local Python service; no brain credits) ───────────────────
 const vision = new Vision();

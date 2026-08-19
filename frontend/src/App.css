@@ -445,8 +445,12 @@
 .orb-mini:hover { opacity: 1; color: #fff; border-color: #2F6FFF; }
 .proj-grid { display: grid; gap: 2vmin; width: 96vw; height: 92vh; padding: 2vh; grid-template-columns: repeat(auto-fit, minmax(38vw, 1fr)); align-content: center; }
 .proj-grid.one { grid-template-columns: 1fr; }
-.proj-card { background: rgba(8,16,32,.7); border: 2px solid rgba(47,111,255,.5); border-radius: 2vmin; padding: 2.5vmin; overflow: auto; box-shadow: 0 0 6vmin rgba(47,111,255,.25); font-size: 1.6vh; }
-.proj-card .tv-title { font-size: 3vh; }
+.proj-card { position: fixed; z-index: 50; display: flex; flex-direction: column; background: rgba(8,16,32,.82); border: 2px solid rgba(47,111,255,.55); border-radius: 16px; overflow: hidden; box-shadow: 0 0 5vmin rgba(47,111,255,.3); font-size: 1.5vh; }
+.proj-card-head { height: 26px; flex-shrink: 0; cursor: grab; background: rgba(47,111,255,.14); border-bottom: 1px solid rgba(47,111,255,.25); }
+.proj-card-head:active { cursor: grabbing; }
+.proj-card-body { flex: 1; overflow: auto; padding: 18px; }
+.proj-card-resize { position: absolute; right: 0; bottom: 0; width: 26px; height: 26px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, rgba(47,111,255,.7) 50%); border-bottom-right-radius: 16px; }
+.proj-card .tv-title { font-size: 2.4vh; }
 
 /* ── Projector mic button (moveable + resizable) + wake indicator ───────── */
 .proj-mic { position: fixed; z-index: 200; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(10,25,41,.82); border: 3px solid #2F6FFF; color: #8fb4ff; cursor: grab; box-shadow: 0 0 28px rgba(47,111,255,.45); backdrop-filter: blur(8px); user-select: none; transition: background .2s, box-shadow .2s; }
@@ -456,3 +460,15 @@
 @keyframes projmicpulse { 0%,100% { box-shadow: 0 0 24px rgba(47,111,255,.6); } 50% { box-shadow: 0 0 54px rgba(47,111,255,1); } }
 .proj-mic-resize { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2F6FFF; border: 2px solid #03050b; cursor: nwse-resize; box-shadow: 0 0 8px rgba(47,111,255,.8); }
 .proj-wake { position: fixed; top: 3vh; left: 50%; transform: translateX(-50%); z-index: 100; color: #29E0A8; font-weight: 800; letter-spacing: 2px; font-size: 2vh; background: rgba(6,12,24,.7); padding: 1vh 2vh; border-radius: 10px; border: 1px solid rgba(41,224,168,.4); }
+
+/* ── Orb chat/settings overlays (stay in the orb, no old dashboard) ─────── */
+.orb-overlay { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.4); backdrop-filter: blur(2px); }
+.orb-panel { width: min(560px, 92vw); max-height: 82vh; display: flex; flex-direction: column; background: rgba(6,12,24,.94); border: 1px solid rgba(47,111,255,.5); border-radius: 16px; box-shadow: 0 0 48px rgba(47,111,255,.35); padding: 16px; color: #e6f1ff; }
+.orb-panel-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; letter-spacing: 2px; color: #5b9cff; margin-bottom: 12px; }
+.orb-chat-history { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; min-height: 120px; }
+.orb-chat-input { background: rgba(10,20,40,.8); border: 1px solid rgba(47,111,255,.4); border-radius: 10px; padding: 12px 14px; color: #fff; font-size: 15px; outline: none; }
+.orb-chat-input:focus { border-color: #2F6FFF; }
+
+/* ── Projector hand-gesture cursor ─────────────────────────────────────── */
+.proj-hand { position: fixed; z-index: 250; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 3px solid #29E0A8; background: rgba(41,224,168,.15); box-shadow: 0 0 24px rgba(41,224,168,.7); pointer-events: none; transition: width .1s, height .1s; }
+.proj-hand.pinch { width: 30px; height: 30px; margin: -15px 0 0 -15px; background: rgba(41,224,168,.55); border-color: #fff; }

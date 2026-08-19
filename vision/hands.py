@@ -21,6 +21,7 @@ import time
 import cv2
 import mediapipe as mp
 import pyautogui
+import requests
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
@@ -297,4 +298,85 @@ class HandController:
         if self._landmarker:
             self._landmarker.close()
             self._landmarker = None
+        self._sx = self._sy = None
+
+
+class GestureController:
+    """
+    PROJECTOR GESTURE CONTROL. Same hand tracking, but instead of driving the OS
+    cursor it streams a normalized cursor (x,y in 0..1) + pinch state to the Node
+    backend, which the projector screen uses to move/grab items with your hand.
+    Point to hover, pinch (thumb+index) to grab, release to drop.
+    """
+    def __init__(self, camera):
+        self.camera = camera
+        self._thread = None
+        self._running = False
+        self._landmarker = None
+        self.target = None
+        self._sx = None
+        self._sy = None
+
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    def start(self, target_url: str) -> bool:
+        if self._running:
+            return True
+        if not self.camera.opened and not self.camera.start():
+            return False
+        self.target = target_url
+        base = python.BaseOptions(model_asset_path=MODEL)
+        opts = vision.HandLandmarkerOptions(base_options=base, num_hands=1, running_mode=vision.RunningMode.VIDEO)
+        self._landmarker = vision.HandLandmarker.create_from_options(opts)
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+        return True
+
+    def _loop(self):
+        while self._running:
+            frame = self.camera.read()
+            if frame is None:
+                time.sleep(0.01)
+                continue
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+            ts = int(time.monotonic() * 1000)
+            try:
+                result = self._landmarker.detect_for_video(mp_image, ts)
+            except Exception:
+                continue
+            if not result.hand_landmarks:
+                continue
+            lm = result.hand_landmarks[0]
+            nx = 1.0 - lm[INDEX_TIP].x  # mirror for natural control
+            ny = lm[INDEX_TIP].y
+            if self._sx is None:
+                self._sx, self._sy = nx, ny
+            else:
+                self._sx += (nx - self._sx) * 0.4
+                self._sy += (ny - self._sy) * 0.4
+            dx = lm[THUMB_TIP].x - lm[INDEX_TIP].x
+            dy = lm[THUMB_TIP].y - lm[INDEX_TIP].y
+            pinch = (dx * dx + dy * dy) ** 0.5 < 0.06
+            try:
+                requests.post(self.target, json={"x": self._sx, "y": self._sy, "pinch": pinch, "active": True}, timeout=0.3)
+            except Exception:
+                pass
+            time.sleep(0.03)
+
+    def stop(self):
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=1.0)
+        if self._landmarker:
+            self._landmarker.close()
+            self._landmarker = None
+        try:
+            if self.target:
+                requests.post(self.target, json={"active": False}, timeout=0.3)
+        except Exception:
+            pass
         self._sx = self._sy = None

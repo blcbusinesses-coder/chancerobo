@@ -64,4 +64,24 @@ export class Media {
     await execAsync('taskkill /IM mpv.exe /F').catch(() => {});
     return { stopped: true };
   }
+
+  /**
+   * Resolve a query or URL to a YouTube video id + embed URL — keyless (scrapes
+   * the search page), so it works on the Pi with no yt-dlp needed. Used to EMBED
+   * a video in the browser (projector / popup), vs play() which uses mpv.
+   */
+  async youtubeEmbed(query: string): Promise<{ id: string; embedUrl: string } | null> {
+    const q = query.trim();
+    const direct = q.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+    if (direct) return { id: direct[1], embedUrl: `https://www.youtube.com/embed/${direct[1]}` };
+    try {
+      const res = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      const html = await res.text();
+      const m = html.match(/"videoId":"([A-Za-z0-9_-]{11})"/);
+      if (m) return { id: m[1], embedUrl: `https://www.youtube.com/embed/${m[1]}` };
+    } catch { /* ignore */ }
+    return null;
+  }
 }

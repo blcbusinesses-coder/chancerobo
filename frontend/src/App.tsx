@@ -467,22 +467,14 @@ function App() {
     window.addEventListener('mouseup', onUp);
   };
 
-  // Chat/Settings from the orb: open the dashboard window in the Electron app,
-  // else (Pi kiosk browser) navigate to the full dashboard.
-  const openDash = () => {
-    const d = (window as any).chanceDesktop;
-    if (d?.openDashboard) d.openDashboard();
-    else window.location.href = '/';
-  };
-
   // ── ORB MODE — the transparent floating brain (desktop app main window). ────
   if (orbMode) {
     const state = busy ? 'busy' : speaking ? 'speaking' : isListening ? 'listening' : '';
     const menu = [
       { key: 'sight', icon: <Eye size={19} />, title: 'Sight', lit: looking, onClick: () => lookThroughCamera() },
       { key: 'hand', icon: <Hand size={19} />, title: 'Hand tracking', lit: handsOn, onClick: () => toggleHands() },
-      { key: 'chat', icon: <MessageSquare size={19} />, title: 'Chat', lit: false, onClick: openDash },
-      { key: 'settings', icon: <Settings size={19} />, title: 'Settings', lit: false, onClick: openDash },
+      { key: 'chat', icon: <MessageSquare size={19} />, title: 'Chat', lit: showChat, onClick: () => { setShowSettings(false); setShowChat((v) => !v); setMenuOpen(false); } },
+      { key: 'settings', icon: <Settings size={19} />, title: 'Settings', lit: showSettings, onClick: () => { setShowChat(false); setShowSettings((v) => !v); setMenuOpen(false); } },
     ];
     const angles = [160, 212, 268, 320];
     const R = dim * 0.3;
@@ -527,6 +519,34 @@ function App() {
           </button>
         </div>
         {subtitles && subtitleText && <div className="orb-subtitle"><Markdown>{subtitleText}</Markdown></div>}
+
+        {showChat && (
+          <div className="orb-overlay">
+            <div className="orb-panel">
+              <div className="orb-panel-head"><span>CHAT</span><button className="icon-btn" onClick={() => setShowChat(false)}><X size={16} /></button></div>
+              <div className="orb-chat-history">
+                {messages.map((m, i) => (
+                  <div key={i} className={`msg ${m.role}`}>
+                    <span className="sender">{m.role === 'user' ? 'YOU' : 'CHANCE'}</span>
+                    {m.role === 'assistant' ? <Markdown>{m.content}</Markdown> : <p>{m.content}</p>}
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+              <input className="orb-chat-input" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder="Type to Chance…" />
+            </div>
+          </div>
+        )}
+        {showSettings && (
+          <div className="orb-overlay">
+            <div className="orb-panel">
+              <div className="orb-panel-head"><span>SETTINGS</span><button className="icon-btn" onClick={() => setShowSettings(false)}><X size={16} /></button></div>
+              <div className="setting-item"><label>Subtitles</label><input type="checkbox" checked={subtitles} onChange={(e) => { setSubtitles(e.target.checked); saveSetting('subtitles', e.target.checked); }} /></div>
+              <div className="setting-item"><label>Wake word ("Chance")</label><input type="checkbox" checked={wakeWord} onChange={(e) => { setWakeWord(e.target.checked); saveSetting('wakeWord', e.target.checked); }} /></div>
+              <div className="setting-item"><label>Keep listening in background</label><input type="checkbox" checked={bgListen} onChange={(e) => { setBgListen(e.target.checked); saveSetting('bgListen', e.target.checked); }} /></div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -61,6 +61,22 @@ export class Vision {
     return this.call('/hands/status', 'GET');
   }
 
+  /** Start/stop projector gesture control (streams a hand cursor to the projector). */
+  async gestureStart(target = 'http://127.0.0.1:8787/api/projector/gesture'): Promise<any> {
+    let res: Response;
+    try {
+      res = await fetch(`${this.base}/gesture/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target }) });
+    } catch {
+      throw new Error('Vision service is not running. Start it with:  npm run vision');
+    }
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((json as any)?.error || `Vision service ${res.status}`);
+    return json;
+  }
+  async gestureStop(): Promise<any> {
+    return this.call('/gesture/stop', 'POST');
+  }
+
   async handsConfig(): Promise<any> {
     return this.call('/hands/config', 'GET');
   }

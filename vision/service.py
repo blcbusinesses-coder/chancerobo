@@ -16,12 +16,13 @@ import os
 from flask import Flask, jsonify, request
 
 from camera import CameraStream
-from hands import HandController
+from hands import HandController, GestureController
 
 app = Flask(__name__)
 
 camera = CameraStream()
 hands = HandController(camera)
+gestures = GestureController(camera)
 _seer = None  # lazy: importing/creating the detector is the slow part
 
 
@@ -70,6 +71,21 @@ def hands_stop():
 @app.get("/hands/status")
 def hands_status():
     return jsonify(running=hands.running)
+
+
+@app.post("/gesture/start")
+def gesture_start():
+    body = request.get_json(force=True, silent=True) or {}
+    target = body.get("target", "http://127.0.0.1:8787/api/projector/gesture")
+    if gestures.start(target):
+        return jsonify(ok=True, running=True)
+    return jsonify(error=f"Could not start gesture control (camera index {camera.index})."), 503
+
+
+@app.post("/gesture/stop")
+def gesture_stop():
+    gestures.stop()
+    return jsonify(ok=True, running=False)
 
 
 @app.get("/hands/config")

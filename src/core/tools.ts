@@ -807,6 +807,23 @@ const TOOLS: ToolDef[] = [
   },
   {
     spec: {
+      name: 'gesture_control',
+      description:
+        "Start or stop HAND-GESTURE control of the PROJECTOR — stand in front of the projected screen and use your hand to move/grab things (point to hover, pinch to grab & move, release to drop). Use for 'start gesture control', 'let me control the projector with my hands', 'stop gesture control'. Needs the webcam + vision service. action: start | stop.",
+      input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['start', 'stop'] } }, required: ['action'] },
+    },
+    handler: async (input) => {
+      const on = String(input.action) === 'start';
+      projector.setGestureActive(on);
+      try {
+        return on ? await vision.gestureStart() : await vision.gestureStop();
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+  },
+  {
+    spec: {
       name: 'wake_word',
       description:
         "Turn the wake word ('Chance') ON or off — hands-free listening, so the user can just say 'Chance' to talk without pressing anything. Use for 'turn on wake word', 'enable wake word', 'stop wake word'. Works in projector mode too.",
@@ -867,6 +884,22 @@ const TOOLS: ToolDef[] = [
         audioOnly: Boolean(input.audio_only),
       });
       return { playing: r.title, url: r.url };
+    },
+  },
+  {
+    spec: {
+      name: 'show_youtube',
+      description:
+        "Show a YouTube video ON SCREEN, embedded (plays in a popup, or on the projector when projector mode is on). Use for 'play/show X on YouTube', 'put a video of Y on the projector'. Give a search phrase or a URL. This is the RIGHT tool for video on the projector (play_video uses a separate fullscreen player).",
+      input_schema: { type: 'object', properties: { query: { type: 'string' }, title: { type: 'string' } }, required: ['query'] },
+    },
+    handler: async (input, { agent }) => {
+      const r = await media.youtubeEmbed(String(input.query));
+      if (!r) return { error: `No YouTube video found for "${input.query}".` };
+      (agent as unknown as { pendingUIAction?: unknown }).pendingUIAction = {
+        type: 'embed', url: `${r.embedUrl}?autoplay=1&rel=0`, title: input.title || 'YouTube',
+      };
+      return { showing: r.id };
     },
   },
   {
