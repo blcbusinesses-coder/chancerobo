@@ -20,6 +20,14 @@ echo ">> Starting backend..."
 npm run server &
 for i in $(seq 1 40); do curl -s http://localhost:8787/api/health >/dev/null 2>&1 && break; sleep 1; done
 
+# Start the vision service (hand tracking / gestures) alongside Chance, so you
+# never need a second terminal. Skips silently if it isn't set up yet.
+if [ -x vision/.venv/bin/python ]; then
+  echo ">> Starting vision service..."
+  pkill -f "vision/service.py" 2>/dev/null || true
+  (cd "$(pwd)" && vision/.venv/bin/python vision/service.py > /tmp/chance-vision.log 2>&1 &)
+fi
+
 # Clear any stale cached page so an update never shows a white/old screen.
 rm -rf ~/.cache/chromium/Default/Cache ~/.cache/chromium/Default/"Code Cache" 2>/dev/null || true
 

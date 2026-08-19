@@ -12,25 +12,26 @@ ITEM 3 — CONTROL MAPPING. Two independently configurable rectangles:
                    Confine control to one monitor / third instead of all 5760px.
 Config persists in hands_config.json and can be changed live via the service.
 """
-import ctypes
 import json
 import os
 import threading
 import time
 
 import cv2
-import mediapipe as mp
-import pyautogui
+import numpy as np
 import requests
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
+
+# MediaPipe + pyautogui are imported LAZILY (inside the methods that need them),
+# because MediaPipe has no ARM/Raspberry-Pi wheels — on the Pi we use OpenCV for
+# gesture control instead, and this module must still import fine without them.
 
 MODEL = os.path.join(os.path.dirname(__file__), "models", "hand_landmarker.task")
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "hands_config.json")
 
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0
-_user32 = ctypes.windll.user32
+
+def _user32():
+    import ctypes
+    return ctypes.windll.user32
 
 INDEX_TIP = 8
 THUMB_TIP = 4
@@ -49,10 +50,10 @@ DEFAULT_CONFIG = {
 def virtual_screen():
     """Full virtual desktop bounds (handles multi-monitor, incl. negative origins)."""
     return {
-        "left": _user32.GetSystemMetrics(76),
-        "top": _user32.GetSystemMetrics(77),
-        "width": _user32.GetSystemMetrics(78),
-        "height": _user32.GetSystemMetrics(79),
+        "left": _user32().GetSystemMetrics(76),
+        "top": _user32().GetSystemMetrics(77),
+        "width": _user32().GetSystemMetrics(78),
+        "height": _user32().GetSystemMetrics(79),
     }
 
 
@@ -228,6 +229,11 @@ class HandController:
         }
 
     def _make_landmarker(self):
+        from mediapipe.tasks import python
+        from mediapipe.tasks.python import vision
+        import pyautogui
+        pyautogui.FAILSAFE = False
+        pyautogui.PAUSE = 0
         base = python.BaseOptions(model_asset_path=MODEL)
         opts = vision.HandLandmarkerOptions(
             base_options=base, num_hands=1, running_mode=vision.RunningMode.VIDEO
@@ -257,6 +263,9 @@ class HandController:
         return sr["left"] + cx * sr["width"], sr["top"] + cy * sr["height"]
 
     def _loop(self):
+        import mediapipe as mp
+        import pyautogui
+        u = _user32()
         while self._running:
             frame = self.camera.read()
             if frame is None:
@@ -280,7 +289,7 @@ class HandController:
             else:
                 self._sx += (tx - self._sx) * smooth
                 self._sy += (ty - self._sy) * smooth
-            _user32.SetCursorPos(int(self._sx), int(self._sy))
+            u.SetCursorPos(int(self._sx), int(self._sy))
 
             dx = lm[THUMB_TIP].x - lm[INDEX_TIP].x
             dy = lm[THUMB_TIP].y - lm[INDEX_TIP].y
@@ -303,19 +312,23 @@ class HandController:
 
 class GestureController:
     """
-    PROJECTOR GESTURE CONTROL. Same hand tracking, but instead of driving the OS
-    cursor it streams a normalized cursor (x,y in 0..1) + pinch state to the Node
-    backend, which the projector screen uses to move/grab items with your hand.
-    Point to hover, pinch (thumb+index) to grab, release to drop.
+    PROJECTOR GESTURE CONTROL — OpenCV only (works on the Raspberry Pi, no
+    MediaPipe needed). Uses motion (background subtraction) to find your moving
+    hand: the largest moving blob's centroid becomes a normalized cursor (0..1),
+    and an open-vs-closed hand (convexity defects = finger count) is the pinch.
+    Streams {x, y, pinch} to the Node backend, which drives the projector.
+
+    Basic but dependency-free. The Hailo AI HAT can replace this later for
+    precise, hardware-accelerated finger tracking.
     """
     def __init__(self, camera):
         self.camera = camera
         self._thread = None
         self._running = False
-        self._landmarker = None
         self.target = None
         self._sx = None
         self._sy = None
+        self._bg = None
 
     @property
     def running(self) -> bool:
@@ -327,56 +340,65 @@ class GestureController:
         if not self.camera.opened and not self.camera.start():
             return False
         self.target = target_url
-        base = python.BaseOptions(model_asset_path=MODEL)
-        opts = vision.HandLandmarkerOptions(base_options=base, num_hands=1, running_mode=vision.RunningMode.VIDEO)
-        self._landmarker = vision.HandLandmarker.create_from_options(opts)
+        self._bg = cv2.createBackgroundSubtractorMOG2(history=200, varThreshold=40, detectShadows=False)
         self._running = True
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
         return True
 
+    @staticmethod
+    def _closed(contour) -> bool:
+        """Few convexity defects (extended fingers) => closed hand / pinch."""
+        try:
+            hull = cv2.convexHull(contour, returnPoints=False)
+            defects = cv2.convexityDefects(contour, hull)
+            if defects is None:
+                return True
+            fingers = sum(1 for i in range(defects.shape[0]) if defects[i, 0][3] > 9000)
+            return fingers < 2
+        except Exception:
+            return False
+
     def _loop(self):
+        kernel = np.ones((5, 5), np.uint8)
         while self._running:
             frame = self.camera.read()
             if frame is None:
                 time.sleep(0.01)
                 continue
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-            ts = int(time.monotonic() * 1000)
-            try:
-                result = self._landmarker.detect_for_video(mp_image, ts)
-            except Exception:
-                continue
-            if not result.hand_landmarks:
-                continue
-            lm = result.hand_landmarks[0]
-            nx = 1.0 - lm[INDEX_TIP].x  # mirror for natural control
-            ny = lm[INDEX_TIP].y
-            if self._sx is None:
-                self._sx, self._sy = nx, ny
-            else:
-                self._sx += (nx - self._sx) * 0.4
-                self._sy += (ny - self._sy) * 0.4
-            dx = lm[THUMB_TIP].x - lm[INDEX_TIP].x
-            dy = lm[THUMB_TIP].y - lm[INDEX_TIP].y
-            pinch = (dx * dx + dy * dy) ** 0.5 < 0.06
-            try:
-                requests.post(self.target, json={"x": self._sx, "y": self._sy, "pinch": pinch, "active": True}, timeout=0.3)
-            except Exception:
-                pass
+            h, w = frame.shape[:2]
+            blur = cv2.GaussianBlur(frame, (7, 7), 0)
+            fg = self._bg.apply(blur)
+            fg = cv2.threshold(fg, 200, 255, cv2.THRESH_BINARY)[1]
+            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, kernel)
+            fg = cv2.dilate(fg, kernel, iterations=2)
+            cnts, _ = cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if cnts:
+                c = max(cnts, key=cv2.contourArea)
+                if cv2.contourArea(c) > 2500:
+                    m = cv2.moments(c)
+                    if m["m00"] != 0:
+                        cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
+                        nx, ny = 1.0 - cx / w, cy / h  # mirror
+                        if self._sx is None:
+                            self._sx, self._sy = nx, ny
+                        else:
+                            self._sx += (nx - self._sx) * 0.4
+                            self._sy += (ny - self._sy) * 0.4
+                        pinch = self._closed(c)
+                        try:
+                            requests.post(self.target, json={"x": self._sx, "y": self._sy, "pinch": pinch, "active": True}, timeout=0.3)
+                        except Exception:
+                            pass
             time.sleep(0.03)
 
     def stop(self):
         self._running = False
         if self._thread:
             self._thread.join(timeout=1.0)
-        if self._landmarker:
-            self._landmarker.close()
-            self._landmarker = None
         try:
             if self.target:
                 requests.post(self.target, json={"active": False}, timeout=0.3)
         except Exception:
             pass
-        self._sx = self._sy = None
+        self._sx = self._sy = self._bg = None
