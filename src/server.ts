@@ -34,13 +34,12 @@ app.use('/media/audio', express.static(path.resolve('audio_cache')));
 
 // Serve the built dashboard (Raspberry Pi kiosk). Checks ./public (bundled) and
 // ./frontend/dist (running from source). Harmless on the desktop.
-// index.html is served with no-store so a browser never shows a STALE page after
-// an update (the old cached html would point to deleted JS → white screen).
-const noCacheHtml = (res: express.Response, p: string) => {
-  if (p.endsWith('.html')) res.setHeader('Cache-Control', 'no-store, must-revalidate');
-};
-app.use(express.static(path.resolve('public'), { setHeaders: noCacheHtml }));
-app.use(express.static(path.resolve('frontend/dist'), { setHeaders: noCacheHtml }));
+// No caching of ANY UI file. With fixed asset filenames (vite config), this means
+// the browser always fetches the current html/js/css — a re-pull can never leave
+// it pointing at a stale/deleted file (the white-screen bug). Localhost, so free.
+const noCache = (res: express.Response) => res.setHeader('Cache-Control', 'no-store, must-revalidate');
+app.use(express.static(path.resolve('public'), { setHeaders: noCache, etag: false, lastModified: false }));
+app.use(express.static(path.resolve('frontend/dist'), { setHeaders: noCache, etag: false, lastModified: false }));
 
 const ext = (mime: string) =>
   mime.includes('webm') ? 'webm' : mime.includes('ogg') ? 'ogg' : mime.includes('wav') ? 'wav' : mime.includes('mp4') || mime.includes('m4a') ? 'm4a' : 'mp3';
