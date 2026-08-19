@@ -447,3 +447,12 @@
 .proj-grid.one { grid-template-columns: 1fr; }
 .proj-card { background: rgba(8,16,32,.7); border: 2px solid rgba(47,111,255,.5); border-radius: 2vmin; padding: 2.5vmin; overflow: auto; box-shadow: 0 0 6vmin rgba(47,111,255,.25); font-size: 1.6vh; }
 .proj-card .tv-title { font-size: 3vh; }
+
+/* ── Projector mic button (moveable + resizable) + wake indicator ───────── */
+.proj-mic { position: fixed; z-index: 200; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(10,25,41,.82); border: 3px solid #2F6FFF; color: #8fb4ff; cursor: grab; box-shadow: 0 0 28px rgba(47,111,255,.45); backdrop-filter: blur(8px); user-select: none; transition: background .2s, box-shadow .2s; }
+.proj-mic:active { cursor: grabbing; }
+.proj-mic.on { background: #2F6FFF; color: #fff; box-shadow: 0 0 44px rgba(47,111,255,.9); animation: projmicpulse 1.4s ease-in-out infinite; }
+.proj-mic.busy { border-color: #7c4dff; box-shadow: 0 0 40px rgba(124,77,255,.8); }
+@keyframes projmicpulse { 0%,100% { box-shadow: 0 0 24px rgba(47,111,255,.6); } 50% { box-shadow: 0 0 54px rgba(47,111,255,1); } }
+.proj-mic-resize { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: #2F6FFF; border: 2px solid #03050b; cursor: nwse-resize; box-shadow: 0 0 8px rgba(47,111,255,.8); }
+.proj-wake { position: fixed; top: 3vh; left: 50%; transform: translateX(-50%); z-index: 100; color: #29E0A8; font-weight: 800; letter-spacing: 2px; font-size: 2vh; background: rgba(6,12,24,.7); padding: 1vh 2vh; border-radius: 10px; border: 1px solid rgba(41,224,168,.4); }

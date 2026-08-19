@@ -807,6 +807,19 @@ const TOOLS: ToolDef[] = [
   },
   {
     spec: {
+      name: 'wake_word',
+      description:
+        "Turn the wake word ('Chance') ON or off — hands-free listening, so the user can just say 'Chance' to talk without pressing anything. Use for 'turn on wake word', 'enable wake word', 'stop wake word'. Works in projector mode too.",
+      input_schema: { type: 'object', properties: { action: { type: 'string', enum: ['on', 'off'] } }, required: ['action'] },
+    },
+    handler: async (input) => {
+      const on = String(input.action) === 'on';
+      projector.setWakeWord(on);
+      return { ok: true, wakeWord: on ? 'on' : 'off' };
+    },
+  },
+  {
+    spec: {
       name: 'projector_show',
       description:
         "Put content on the PROJECTOR screen (projector mode). Use for 'put X on the projector', 'show a 3D Y on the wall'. kind: 3d | image | gallery | text | clear. value = shape (3d) / image URL / list of URLs (gallery) / text. mode add or replace (default replace). For VIDEO on the projector, use play_video (it goes fullscreen). ",
