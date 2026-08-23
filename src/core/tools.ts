@@ -734,7 +734,7 @@ const TOOLS: ToolDef[] = [
     spec: {
       name: 'hand_control',
       description:
-        "Start or stop HAND-TRACKING cursor control — the webcam tracks your hand and moves the mouse (index finger = pointer, pinch thumb+index = click). Use when the user says 'let me control with my hand', 'start hand control', 'stop tracking my hand'. action: start | stop | status.",
+        "DESKTOP COMPUTER ONLY — move the computer's MOUSE CURSOR with your hand (index finger = pointer, pinch = click). Needs MediaPipe, which is NOT available on the Raspberry Pi. For controlling the PROJECTOR / on the Pi, use gesture_control instead. action: start | stop | status.",
       input_schema: {
         type: 'object',
         properties: { action: { type: 'string', enum: ['start', 'stop', 'status'] } },

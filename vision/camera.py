@@ -49,8 +49,10 @@ class CameraStream:
             # Many USB cams on Linux need MJPG to deliver frames at speed.
             if not IS_WINDOWS:
                 cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            # Modest resolution — a USB-2.0 cam on a Pi can't allocate 720p buffers
+            # ("Failed to allocate required memory"). Override with VISION_CAM_W/H.
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(os.environ.get("VISION_CAM_W", "640")))
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(os.environ.get("VISION_CAM_H", "480")))
             # A device can "open" but never deliver frames — verify with a real read.
             ok = False
             for _ in range(10):
