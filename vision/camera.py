@@ -7,14 +7,16 @@ latest-frame buffer; both the "see" (object detection) and "hands" (cursor
 control) features read from that same buffer instead of each opening the camera.
 """
 import os
+import sys
 import threading
 import time
 
 import cv2
 
-# Which camera. A USB cam is often index 1 when a built-in cam is 0 — override
+# Which camera to PREFER. Auto-scan finds a working one if this fails. Override
 # with VISION_CAM_INDEX if the wrong one opens.
 CAM_INDEX = int(os.environ.get("VISION_CAM_INDEX", "0"))
+IS_WINDOWS = sys.platform.startswith("win")
 
 
 class CameraStream:
@@ -32,25 +34,55 @@ class CameraStream:
     def opened(self) -> bool:
         return self._running and self._cap is not None and self._cap.isOpened()
 
+    def _try_open(self, index: int):
+        """Open ONE index with the right backend for this OS; verify a frame reads."""
+        # Windows: DirectShow. Linux (Pi): V4L2. Fall back to the auto backend.
+        backends = ([cv2.CAP_DSHOW, cv2.CAP_ANY] if IS_WINDOWS else [cv2.CAP_V4L2, cv2.CAP_ANY])
+        for be in backends:
+            try:
+                cap = cv2.VideoCapture(index, be)
+            except Exception:
+                cap = cv2.VideoCapture(index)
+            if not cap.isOpened():
+                cap.release()
+                continue
+            # Many USB cams on Linux need MJPG to deliver frames at speed.
+            if not IS_WINDOWS:
+                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            # A device can "open" but never deliver frames — verify with a real read.
+            ok = False
+            for _ in range(10):
+                ok, _f = cap.read()
+                if ok and _f is not None:
+                    break
+                time.sleep(0.05)
+            if ok:
+                return cap
+            cap.release()
+        return None
+
     def start(self) -> bool:
-        """Open the camera and begin grabbing frames. Idempotent."""
+        """Open the camera and begin grabbing frames. Auto-scans indices. Idempotent."""
         if self._running:
             return True
-        # CAP_DSHOW = DirectShow: opens faster and more reliably on Windows.
-        cap = cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
-        if not cap.isOpened():
-            # Fall back to the default backend if DirectShow refused.
-            cap = cv2.VideoCapture(self.index)
-        if not cap.isOpened():
-            cap.release()
+        # Try the preferred index first, then scan 0..5 (USB cam is often not 0).
+        candidates = [self.index] + [i for i in range(6) if i != self.index]
+        cap = None
+        for idx in candidates:
+            cap = self._try_open(idx)
+            if cap is not None:
+                self.index = idx
+                print(f"[camera] using index {idx}")
+                break
+        if cap is None:
+            print("[camera] no working camera found (checked indices 0-5)")
             return False
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self._cap = cap
         self._running = True
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
-        # Give the grabber a moment to land the first frame.
         for _ in range(50):
             if self._frame is not None:
                 break
