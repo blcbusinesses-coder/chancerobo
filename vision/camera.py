@@ -38,35 +38,46 @@ class CameraStream:
     def opened(self) -> bool:
         return self._running and self._cap is not None and self._cap.isOpened()
 
+    def _reads(self, cap) -> bool:
+        """A device can 'open' but never deliver frames — verify with a real read."""
+        for _ in range(8):
+            ok, f = cap.read()
+            if ok and f is not None:
+                return True
+            time.sleep(0.05)
+        return False
+
     def _try_open(self, index: int):
-        """Open ONE index with the right backend for this OS; verify a frame reads."""
-        # Windows: DirectShow. Linux (Pi): V4L2. Fall back to the auto backend.
+        """Open ONE index, trying formats/resolutions until one actually streams."""
         backends = ([cv2.CAP_DSHOW, cv2.CAP_ANY] if IS_WINDOWS else [cv2.CAP_V4L2, cv2.CAP_ANY])
+        # (fourcc, width, height). USB-2.0 cams usually stream MJPG at set sizes;
+        # the default (raw YUYV) fails with VIDIOC_STREAMON: Invalid argument.
+        env_w = os.environ.get("VISION_CAM_W")
+        env_h = os.environ.get("VISION_CAM_H")
+        combos = []
+        if env_w and env_h:
+            combos.append(("MJPG", int(env_w), int(env_h)))
+        combos += [
+            ("MJPG", 640, 480), ("MJPG", 320, 240), ("MJPG", 800, 600),
+            ("MJPG", 1280, 720), ("YUYV", 640, 480), ("", 640, 480), ("", 320, 240),
+        ]
         for be in backends:
-            try:
-                cap = cv2.VideoCapture(index, be)
-            except Exception:
-                cap = cv2.VideoCapture(index)
-            if not cap.isOpened():
+            for fourcc, w, h in combos:
+                try:
+                    cap = cv2.VideoCapture(index, be)
+                except Exception:
+                    cap = cv2.VideoCapture(index)
+                if not cap.isOpened():
+                    cap.release()
+                    continue
+                if fourcc:
+                    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+                if self._reads(cap):
+                    print(f"[camera] index {index}: {fourcc or 'default'} {w}x{h}")
+                    return cap
                 cap.release()
-                continue
-            # Many USB cams on Linux need MJPG to deliver frames at speed.
-            if not IS_WINDOWS:
-                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-            # Modest resolution — a USB-2.0 cam on a Pi can't allocate 720p buffers
-            # ("Failed to allocate required memory"). Override with VISION_CAM_W/H.
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(os.environ.get("VISION_CAM_W", "640")))
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(os.environ.get("VISION_CAM_H", "480")))
-            # A device can "open" but never deliver frames — verify with a real read.
-            ok = False
-            for _ in range(10):
-                ok, _f = cap.read()
-                if ok and _f is not None:
-                    break
-                time.sleep(0.05)
-            if ok:
-                return cap
-            cap.release()
         return None
 
     def start(self) -> bool:
