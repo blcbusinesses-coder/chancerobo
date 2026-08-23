@@ -10,6 +10,14 @@ echo ">> Syncing dependencies..."
 PUPPETEER_SKIP_DOWNLOAD=true npm install --no-audit --no-fund
 # UI is pre-built in the repo (frontend/dist) — pulled in by git, no build needed.
 
+# Restart the vision service (camera / gestures) so camera changes take effect.
+if [ -x vision/.venv/bin/python ]; then
+  echo ">> Restarting vision service..."
+  pkill -f "vision/service.py" 2>/dev/null || true
+  sleep 1
+  (vision/.venv/bin/python vision/service.py > /tmp/chance-vision.log 2>&1 &)
+fi
+
 echo ">> Restarting Chance..."
 if command -v pm2 >/dev/null 2>&1 && pm2 describe chance >/dev/null 2>&1; then
   pm2 restart chance
