@@ -13,6 +13,11 @@ are lazy-loaded on first use so the service boots instantly.
 """
 import os
 
+# On the Pi, OpenCV's GStreamer backend fails to allocate the camera buffer
+# ("Failed to allocate required memory"). Force OpenCV to use the DIRECT V4L2
+# backend instead. MUST be set before OpenCV (cv2) is first imported below.
+os.environ.setdefault("OPENCV_VIDEOIO_PRIORITY_GSTREAMER", "0")
+
 from flask import Flask, jsonify, request
 
 from camera import CameraStream

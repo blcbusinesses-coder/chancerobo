@@ -11,6 +11,10 @@ import sys
 import threading
 import time
 
+# Force OpenCV to use the direct V4L2 camera backend, not GStreamer (which fails
+# to allocate the buffer on the Pi). Must be set before `import cv2`.
+os.environ.setdefault("OPENCV_VIDEOIO_PRIORITY_GSTREAMER", "0")
+
 import cv2
 
 # Which camera to PREFER. Auto-scan finds a working one if this fails. Override
